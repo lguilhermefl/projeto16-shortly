@@ -12,7 +12,6 @@ async function validateUrl(req, res, next) {
     const url = sanitizeString(req.body.url);
 
     res.locals.url = url;
-
     next();
 };
 
