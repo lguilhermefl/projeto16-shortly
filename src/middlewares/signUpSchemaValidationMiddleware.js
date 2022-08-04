@@ -20,3 +20,5 @@ async function validateSignUp(req, res, next) {
 
     next();
 };
+
+export default validateSignUp;
