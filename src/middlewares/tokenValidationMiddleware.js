@@ -1,8 +1,7 @@
 import connection from '../db.js'
-import sanitizeString from '../utils/sanitizeStrings.js';
 
 async function validateToken(req, res, next) {
-    const authorization = sanitizeString(req.headers.authorization);
+    const { authorization } = req.headers;
     const token = authorization?.replace('Bearer ', '');
 
     if (!token) {
