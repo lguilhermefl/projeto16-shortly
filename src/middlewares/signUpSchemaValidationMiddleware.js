@@ -12,8 +12,7 @@ async function validateSignUp(req, res, next) {
     const user = {
         name: sanitizeString(req.body.name),
         email: sanitizeString(req.body.email),
-        password: sanitizeString(req.body.password),
-        repeat_password: sanitizeString(req.body.repeat_password)
+        password: sanitizeString(req.body.password)
     };
 
     res.locals.user = user;
