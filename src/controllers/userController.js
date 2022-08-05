@@ -93,6 +93,21 @@ async function deleteUrl(req, res) {
 
 async function getUserData(req, res) {
     const { user } = res.locals;
+
+    const { rows: userData, rowCount: existsUser } = await connection.query(`
+        select users.id, users.name, sum(urls.visits) as "visitCount",
+            jsonb_agg(json_build_object('id', urls.id, 'shortUrl', urls.short_url, 'url', urls.url, 'visitCount', urls.visits)) as "shortenedUrls"
+        from users
+        join urls
+        on urls.user_id=users.id
+        where users.id=$1;
+    `, [user.id]);
+
+    if (existsUser === 0) {
+        return res.sendStatus(404);
+    };
+
+    res.status(200).send(userData);
 };
 
-export { shortenUrl, getUrl, redirectToLink, deleteUrl };
+export { shortenUrl, getUrl, redirectToLink, deleteUrl, getUserData };
