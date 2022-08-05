@@ -59,4 +59,36 @@ async function redirectToLink(req, res) {
     res.redirect(url);
 };
 
-export { shortenUrl, getUrl, redirectToLink };
+async function deleteUrl(req, res) {
+    const { user } = req.locals;
+    const { id: urlId } = req.params;
+
+    const { rowCount: existsShortenedUrl } = await connection.query(`
+        select short_url
+        from urls
+        where id=$1;
+    `, [urlId]);
+
+    if (existsShortenedUrl === 0) {
+        return res.sendStatus(404);
+    };
+
+    const { rowCount: isUrlFromUser } = await connection.query(`
+        select *
+        from urls
+        where user_id=$1 and id=$2;
+    `, [user.id, urlId]);
+
+    if (isUrlFromUser === 0) {
+        return res.sendStatus(401);
+    };
+
+    await connection.query(`
+        delete from urls
+        where id=$1;
+    `, [urlId]);
+
+    res.sendStatus(201);
+};
+
+export { shortenUrl, getUrl, redirectToLink, deleteUrl };
