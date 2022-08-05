@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import connection from "../db";
+import sanitizeString from "../utils/sanitizeStrings";
 
 async function shortenUrl(req, res) {
     const { user, url } = res.locals;
@@ -27,7 +28,35 @@ async function getUrl(req, res) {
         return res.sendStatus(404);
     };
 
+    delete urlInfo.user_id;
+    delete urlInfo.visits;
+    delete urlInfo.created_at;
+
     res.send(urlInfo);
 };
 
-export { shortenUrl, getUrl };
+async function redirectToLink(req, res) {
+    const shortUrl = sanitizeString(req.params.shortUrl);
+
+    const { rows: originalUrl, rowCount: urlFound } = await connection.query(`
+        select url
+        from urls
+        where short_url=$1;
+    `, [shortUrl]);
+
+    if (urlFound === 0) {
+        return res.sendStatus(404);
+    };
+
+    await connection.query(`
+        update urls
+        set visits=visits+1
+        where short_url=$1;
+    `, [shortUrl]);
+
+    const { url } = originalUrl;
+
+    res.redirect(url);
+};
+
+export { shortenUrl, getUrl, redirectToLink };
