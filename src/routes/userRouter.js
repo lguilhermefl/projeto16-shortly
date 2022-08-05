@@ -1,14 +1,16 @@
 import { Router } from 'express';
-import { shortenUrl, getUrl } from '../controllers/userController.js';
+import { shortenUrl, getUrl, redirectToLink, deleteUrl, getUserData, getRanking } from '../controllers/userController.js';
 import validateToken from '../middlewares/tokenValidationMiddleware.js'
 
 const userRouter = Router();
 
-userRouter.post('/urls/shorten', validateToken, shortenUrl);
 userRouter.get('/urls/:id', getUrl);
-userRouter.delete('/urls/:id');
-userRouter.get('/urls/open/:shortUrl');
-userRouter.get('/users/me');
-userRouter.get('/ranking');
+userRouter.get('/urls/open/:shortUrl', redirectToLink);
+userRouter.get('/ranking', getRanking);
+
+userRouter.use(validateToken);
+userRouter.post('/urls/shorten', shortenUrl);
+userRouter.get('/users/me', getUserData);
+userRouter.delete('/urls/:id', deleteUrl);
 
 export default userRouter;
