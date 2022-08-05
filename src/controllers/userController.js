@@ -93,10 +93,15 @@ async function deleteUrl(req, res) {
 
 async function getUserData(req, res) {
     const { user } = res.locals;
-
+    // Verificar ordenação do array shortenedUrls pela url_id
     const { rows: userData, rowCount: existsUser } = await connection.query(`
         select users.id, users.name, sum(urls.visits) as "visitCount",
-            jsonb_agg(json_build_object('id', urls.id, 'shortUrl', urls.short_url, 'url', urls.url, 'visitCount', urls.visits)) as "shortenedUrls"
+            jsonb_agg(
+                json_build_object(
+                    'id', urls.id, 'shortUrl', urls.short_url, 'url', urls.url,
+                    'visitCount', urls.visits
+                )
+            ) as "shortenedUrls"
         from users
         join urls
         on urls.user_id=users.id
@@ -107,7 +112,23 @@ async function getUserData(req, res) {
         return res.sendStatus(404);
     };
 
-    res.status(200).send(userData);
+    const userDataObject = userData[0];
+
+    res.status(200).send(userDataObject);
 };
 
-export { shortenUrl, getUrl, redirectToLink, deleteUrl, getUserData };
+async function getRanking(req, res) {
+    const { rows: ranking } = await connection.query(`
+        select users.id, users.name, count(urls.user_id) as "linksCount", sum(urls.visits) as "visitCount"
+        from users
+        left join urls
+        on urls.user_id=users.id
+        order by "visitCount"
+        desc
+        limit 10;
+    `);
+
+    res.send(ranking);
+};
+
+export { shortenUrl, getUrl, redirectToLink, deleteUrl, getUserData, getRanking };
