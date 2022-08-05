@@ -60,7 +60,7 @@ async function redirectToLink(req, res) {
 };
 
 async function deleteUrl(req, res) {
-    const { user } = req.locals;
+    const { user } = res.locals;
     const { id: urlId } = req.params;
 
     const { rowCount: existsShortenedUrl } = await connection.query(`
@@ -89,6 +89,10 @@ async function deleteUrl(req, res) {
     `, [urlId]);
 
     res.sendStatus(201);
+};
+
+async function getUserData(req, res) {
+    const { user } = res.locals;
 };
 
 export { shortenUrl, getUrl, redirectToLink, deleteUrl };
