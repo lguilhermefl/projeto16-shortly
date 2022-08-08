@@ -22,10 +22,28 @@ async function createUserSession(id, token) {
     `, [id, token]);
 };
 
+async function getUserSession(token) {
+    return connection.query(`
+        select *
+        from sessions
+        where token=$1;
+    `, [token]);
+};
+
+async function getUserById(id) {
+    return connection.query(`
+        select *
+        from users
+        where id=$1;
+    `, [id]);
+};
+
 const authRepository = {
     getUserRegistryByEmail,
     signUpUser,
-    createUserSession
+    createUserSession,
+    getUserSession,
+    getUserById
 };
 
 export default authRepository;

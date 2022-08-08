@@ -1,4 +1,4 @@
-import connection from '../db.js'
+import authRepository from '../repositories/authRepository.js';
 
 async function validateToken(req, res, next) {
     const { authorization } = req.headers;
@@ -8,11 +8,7 @@ async function validateToken(req, res, next) {
         return res.sendStatus(401);
     };
 
-    const { rows: session } = await connection.query(`
-        select *
-        from sessions
-        where token=$1;
-    `, [token]);
+    const { rows: session } = await authRepository.getUserSession(token);
 
     if (!session) {
         return res.sendStatus(401);
@@ -20,11 +16,7 @@ async function validateToken(req, res, next) {
 
     const { user_id: userId } = session[0];
 
-    const { rows: user } = await connection.query(`
-        select *
-        from users
-        where id=$1;
-    `, [userId]);
+    const { rows: user } = await authRepository.getUserById(userId);
 
     if (!user) {
         return res.sendStatus(401);
