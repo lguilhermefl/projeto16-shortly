@@ -11,24 +11,29 @@ async function signUp(req, res) {
     };
     const { name, email, password } = user;
 
-    const { rowCount: emailRegistered } = await connection.query(`
-        select *
-        from users
-        where email=$1;
-    `, [email]);
+    try {
+        const { rowCount: emailRegistered } = await connection.query(`
+            select *
+            from users
+            where email=$1;
+        `, [email]);
 
-    if (emailRegistered !== 0) {
-        return res.sendStatus(409);
-    };
+        if (emailRegistered !== 0) {
+            return res.sendStatus(409);
+        };
 
-    const passwordHash = bcrypt.hashSync(password, 10);
+        const passwordHash = bcrypt.hashSync(password, 10);
 
-    await connection.query(`
-        insert into users (name, email, password)
-        values ($1, $2, $3);
-    `, [name, email, passwordHash]);
+        await connection.query(`
+            insert into users (name, email, password)
+            values ($1, $2, $3);
+        `, [name, email, passwordHash]);
 
-    res.sendStatus(201);
+        res.sendStatus(201);
+    } catch (error) {
+        console.log(error);
+        return res.sendStatus(500);
+    }
 };
 
 async function signIn(req, res) {
@@ -38,30 +43,35 @@ async function signIn(req, res) {
     };
     const { email, password } = user;
 
-    const { rows: userRegistered, rowCount: userCount } = await connection.query(`
-        select *
-        from users
-        where email=$1;
-    `, [email]);
+    try {
+        const { rows: userRegistered, rowCount: userCount } = await connection.query(`
+            select *
+            from users
+            where email=$1;
+        `, [email]);
 
-    if (userCount === 0) {
-        return res.sendStatus(401);
-    };
+        if (userCount === 0) {
+            return res.sendStatus(401);
+        };
 
-    const { id, password: passwordHash } = userRegistered[0];
+        const { id, password: passwordHash } = userRegistered[0];
 
-    if (bcrypt.compareSync(password, passwordHash)) {
-        const token = uuid();
+        if (bcrypt.compareSync(password, passwordHash)) {
+            const token = uuid();
 
-        await connection.query(`
-            insert into sessions (user_id, token)
-            values ($1, $2);
-        `, [id, token]);
+            await connection.query(`
+                insert into sessions (user_id, token)
+                values ($1, $2);
+            `, [id, token]);
 
-        res.status(200).send({ token });
-    } else {
-        res.sendStatus(401);
-    };
+            res.status(200).send({ token });
+        } else {
+            res.sendStatus(401);
+        };
+    } catch (error) {
+        console.log(error);
+        return res.sendStatus(500);
+    }
 };
 
 export { signUp, signIn };
