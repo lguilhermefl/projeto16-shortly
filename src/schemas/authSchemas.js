@@ -3,7 +3,7 @@ import joi from 'joi';
 const signUpSchema = joi.object({
     name: joi
         .string()
-        .max(40)
+        .max(140)
         .required(),
     email: joi
         .string()

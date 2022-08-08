@@ -1,9 +1,14 @@
 import bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';
-import connection from '../db';
+import connection from '../db.js';
+import sanitizeString from '../utils/sanitizeStrings.js';
 
 async function signUp(req, res) {
-    const { user } = res.locals;
+    const user = {
+        name: sanitizeString(req.body.name),
+        email: sanitizeString(req.body.email),
+        password: sanitizeString(req.body.password)
+    };
     const { name, email, password } = user;
 
     const { rowCount: emailRegistered } = await connection.query(`
@@ -27,18 +32,25 @@ async function signUp(req, res) {
 };
 
 async function signIn(req, res) {
-    const { user } = res.locals;
+    const user = {
+        email: sanitizeString(req.body.email),
+        password: sanitizeString(req.body.password)
+    };
     const { email, password } = user;
 
-    const { rowCount: userRegistered } = await connection.query(`
+    const { rows: userRegistered, rowCount: userCount } = await connection.query(`
         select *
         from users
         where email=$1;
     `, [email]);
 
-    const { id, passwordHash } = userRegistered;
+    if (userCount === 0) {
+        return res.sendStatus(401);
+    };
 
-    if (userRegistered !== 0 && bcrypt.compareSync(password, passwordHash)) {
+    const { id, password: passwordHash } = userRegistered[0];
+
+    if (bcrypt.compareSync(password, passwordHash)) {
         const token = uuid();
 
         await connection.query(`

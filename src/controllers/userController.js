@@ -1,11 +1,22 @@
 import { nanoid } from "nanoid";
-import connection from "../db";
-import sanitizeString from "../utils/sanitizeStrings";
+import connection from "../db.js";
+import sanitizeString from "../utils/sanitizeStrings.js";
 
 async function shortenUrl(req, res) {
-    const { user, url } = res.locals;
+    const { user } = res.locals;
+    const url = sanitizeString(req.body.url);
 
-    const shortUrl = nanoid();
+    const shortUrl = nanoid(8);
+
+    const { rowCount: shortUrlFound } = await connection.query(`
+        select *
+        from urls
+        where short_url=$1;
+    `, [shortUrl]);
+
+    if (shortUrlFound !== 0) {
+        return res.status(409).send("Try again, we had a problem generating your short url!");
+    };
 
     await connection.query(`
         insert into urls (user_id, url, short_url)
@@ -32,14 +43,14 @@ async function getUrl(req, res) {
     delete urlInfo.visits;
     delete urlInfo.created_at;
 
-    res.send(urlInfo);
+    res.send(urlInfo[0]);
 };
 
 async function redirectToLink(req, res) {
     const shortUrl = sanitizeString(req.params.shortUrl);
 
-    const { rows: originalUrl, rowCount: urlFound } = await connection.query(`
-        select url
+    const { rows: urlInfo, rowCount: urlFound } = await connection.query(`
+        select *
         from urls
         where short_url=$1;
     `, [shortUrl]);
@@ -48,13 +59,13 @@ async function redirectToLink(req, res) {
         return res.sendStatus(404);
     };
 
+    const { id, url } = urlInfo[0];
+
     await connection.query(`
         update urls
         set visits=visits+1
-        where short_url=$1;
-    `, [shortUrl]);
-
-    const { url } = originalUrl;
+        where id=$1;
+    `, [id]);
 
     res.redirect(url);
 };
@@ -93,19 +104,20 @@ async function deleteUrl(req, res) {
 
 async function getUserData(req, res) {
     const { user } = res.locals;
-    // Verificar ordenação do array shortenedUrls pela url_id
+
     const { rows: userData, rowCount: existsUser } = await connection.query(`
         select users.id, users.name, sum(urls.visits) as "visitCount",
             jsonb_agg(
                 json_build_object(
                     'id', urls.id, 'shortUrl', urls.short_url, 'url', urls.url,
                     'visitCount', urls.visits
-                )
+                ) order by urls.id
             ) as "shortenedUrls"
         from users
         join urls
         on urls.user_id=users.id
-        where users.id=$1;
+        where users.id=$1
+        group by users.id;
     `, [user.id]);
 
     if (existsUser === 0) {
@@ -119,10 +131,11 @@ async function getUserData(req, res) {
 
 async function getRanking(req, res) {
     const { rows: ranking } = await connection.query(`
-        select users.id, users.name, count(urls.user_id) as "linksCount", sum(urls.visits) as "visitCount"
+        select users.id, users.name, count(urls.user_id) as "linksCount", coalesce(sum(urls.visits), 0) as "visitCount"
         from users
         left join urls
         on urls.user_id=users.id
+        group by users.id
         order by "visitCount"
         desc
         limit 10;

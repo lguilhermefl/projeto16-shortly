@@ -8,7 +8,7 @@ async function validateToken(req, res, next) {
         return res.sendStatus(401);
     };
 
-    const { rows: session } = connection.query(`
+    const { rows: session } = await connection.query(`
         select *
         from sessions
         where token=$1;
@@ -18,17 +18,19 @@ async function validateToken(req, res, next) {
         return res.sendStatus(401);
     };
 
-    const { rows: user } = connection.query(`
+    const { user_id: userId } = session[0];
+
+    const { rows: user } = await connection.query(`
         select *
         from users
         where id=$1;
-    `, [session.user_id]);
+    `, [userId]);
 
     if (!user) {
         return res.sendStatus(401);
     };
 
-    res.locals.user = user;
+    res.locals.user = user[0];
     next();
 };
 
