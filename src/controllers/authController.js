@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';
-import connection from '../db.js';
 import sanitizeString from '../utils/sanitizeStrings.js';
+import authRepository from '../repositories/authRepository.js';
 
 async function signUp(req, res) {
     const user = {
@@ -12,22 +12,15 @@ async function signUp(req, res) {
     const { name, email, password } = user;
 
     try {
-        const { rowCount: emailRegistered } = await connection.query(`
-            select *
-            from users
-            where email=$1;
-        `, [email]);
+        const { rowCount: userCount } = await authRepository.getUserRegistryByEmail(email);
 
-        if (emailRegistered !== 0) {
+        if (userCount !== 0) {
             return res.sendStatus(409);
         };
 
         const passwordHash = bcrypt.hashSync(password, 10);
 
-        await connection.query(`
-            insert into users (name, email, password)
-            values ($1, $2, $3);
-        `, [name, email, passwordHash]);
+        await authRepository.signUpUser(name, email, passwordHash);
 
         res.sendStatus(201);
     } catch (error) {
@@ -44,11 +37,7 @@ async function signIn(req, res) {
     const { email, password } = user;
 
     try {
-        const { rows: userRegistered, rowCount: userCount } = await connection.query(`
-            select *
-            from users
-            where email=$1;
-        `, [email]);
+        const { rows: userRegistered, rowCount: userCount } = await authRepository.getUserRegistryByEmail(email);
 
         if (userCount === 0) {
             return res.sendStatus(401);
@@ -59,10 +48,7 @@ async function signIn(req, res) {
         if (bcrypt.compareSync(password, passwordHash)) {
             const token = uuid();
 
-            await connection.query(`
-                insert into sessions (user_id, token)
-                values ($1, $2);
-            `, [id, token]);
+            await authRepository.createUserSession(id, token);
 
             res.status(200).send({ token });
         } else {
